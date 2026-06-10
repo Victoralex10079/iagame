@@ -1,0 +1,12 @@
+# Archivos generados por el sistema operativo
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Carpetas de configuración del IDE (Antigravity)
+.vscode/
+.idea/
+
+# Archivos temporales o de pruebas locales
+*.log
+*.tmp
