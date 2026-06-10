@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Phaser 3 Platformer Mechanics - Mario Bros Style</title>
+    <meta name="description" content="Una demo interactiva de las mecánicas básicas de plataformas estilo Mario Bros con Phaser 3, incluyendo inercia horizontal y salto dinámico variable.">
+    <link rel="stylesheet" href="style.css">
+    <!-- Load Phaser 3 from CDN -->
+    <script src="https://cdn.jsdelivr.net/npm/phaser@3.60.0/dist/phaser.min.js"></script>
+</head>
+<body>
+    <header>
+        <h1>RETRO PLATFORMER</h1>
+        <p class="subtitle">Físicas de Plataformas Arcade con Phaser 3</p>
+    </header>
+
+    <main>
+        <!-- The Phaser game canvas container -->
+        <section class="game-container" id="game-container">
+            <!-- Phaser will inject the canvas here -->
+        </section>
+
+        <!-- Sidebar overlay describing controls and physics parameters -->
+        <aside class="sidebar">
+            <div class="instructions">
+                <h2>CONTROLES</h2>
+                <ul class="controls-list">
+                    <li>
+                        <span class="action-desc">Mover a la izquierda</span>
+                        <kbd class="key-cap">◀</kbd>
+                    </li>
+                    <li>
+                        <span class="action-desc">Mover a la derecha</span>
+                        <kbd class="key-cap">▶</kbd>
+                    </li>
+                    <li>
+                        <span class="action-desc">Saltar (Salto Variable)</span>
+                        <kbd class="key-cap">▲</kbd>
+                    </li>
+                    <li>
+                        <span class="action-desc">Salto Alternativo</span>
+                        <kbd class="key-cap">SPACE</kbd>
+                    </li>
+                </ul>
+            </div>
+
+            <div class="mechanics-card">
+                <h3>Salto Variable e Inercia</h3>
+                <p>
+                    <strong>Salto Dinámico:</strong> Mantén presionada la tecla de salto para impulsarte más alto (máximo 220ms de impulso). Si solo la pulsas brevemente, harás un salto pequeño. El salto solo se permite si estás apoyado en una superficie.
+                </p>
+                <br>
+                <p>
+                    <strong>Inercia (Drag):</strong> Al soltar las teclas direccionales, el sprite no se detendrá instantáneamente. Se deslizará levemente simulando inercia física (arrastre configurable).
+                </p>
+            </div>
+        </aside>
+    </main>
+
+    <footer>
+        <p>Desarrollado en colaboración con <a href="https://github.com/google-deepmind" target="_blank" rel="noopener">Antigravity AI</a> | Phaser 3 Demo</p>
+    </footer>
+
+    <!-- Load game execution -->
+    <script src="game.js"></script>
+</body>
+</html>
