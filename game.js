@@ -1,43 +1,3 @@
-// Extend Phaser TextureManager to support dynamic color key transparency and sheet conversion
-Phaser.Textures.TextureManager.prototype.addKeyed = function (newKey, sourceImage, colorHex) {
-    const canvas = document.createElement('canvas');
-    canvas.width = sourceImage.width;
-    canvas.height = sourceImage.height;
-    const ctx = canvas.getContext('2d');
-    ctx.drawImage(sourceImage, 0, 0);
-
-    const imgData = ctx.getImageData(0, 0, canvas.width, canvas.height);
-    const data = imgData.data;
-
-    let rKey = 0, gKey = 0, bKey = 0;
-    if (typeof colorHex === 'string') {
-        const cleanHex = colorHex.replace('#', '').replace('0x', '');
-        rKey = parseInt(cleanHex.substring(0, 2), 16);
-        gKey = parseInt(cleanHex.substring(2, 4), 16);
-        bKey = parseInt(cleanHex.substring(4, 6), 16);
-    } else if (typeof colorHex === 'number') {
-        rKey = (colorHex >> 16) & 255;
-        gKey = (colorHex >> 8) & 255;
-        bKey = colorHex & 255;
-    }
-
-    for (let i = 0; i < data.length; i += 4) {
-        if (data[i] === rKey && data[i + 1] === gKey && data[i + 2] === bKey) {
-            data[i + 3] = 0; // Set alpha to 0 for the transparent color key
-        }
-    }
-
-    ctx.putImageData(imgData, 0, 0);
-    return this.addCanvas(newKey, canvas);
-};
-
-// Extend Phaser Texture to support slicing into spritesheet in-place
-Phaser.Textures.Texture.prototype.addSpriteSheetFromSheet = function (config) {
-    const source = this.source[0];
-    Phaser.Textures.Parsers.SpriteSheet(this, 0, 0, 0, source.width, source.height, config);
-    return this;
-};
-
 // --- SCENE 1: MAIN MENU SCENE ---
 class MainMenuScene extends Phaser.Scene {
     constructor() {
@@ -101,8 +61,10 @@ class PlatformerScene extends Phaser.Scene {
     }
 
     preload() {
-        // 1. Load player raw image from assets folder for color keying
-        this.load.image('player_raw', 'assets/Gemini_Generated_Image_8ty5jb8ty5jb8ty5.png');
+        // 1. Load player spritesheets independently
+        this.load.spritesheet('player_move', 'assets/moverse.png', { frameWidth: 563, frameHeight: 768 });
+        this.load.spritesheet('player_jump', 'assets/salto.png', { frameWidth: 563, frameHeight: 768 });
+        this.load.spritesheet('player_crouch', 'assets/agachar.png', { frameWidth: 563, frameHeight: 768 });
 
         // 2. Generate floating platform texture (dark blue with neon blue top border)
         const platformGraphics = this.make.graphics({ x: 0, y: 0, add: false });
@@ -176,16 +138,7 @@ class PlatformerScene extends Phaser.Scene {
     create() {
         // State tracking
         this.levelCompleted = false;
-
-        // Extrae la textura de 'player_raw', vuelve transparente el color negro puro (#000000)
-        let rawTexture = this.textures.get('player_raw');
-        this.textures.addKeyed('player_clean', rawTexture.getSourceImage(), '#000000');
-
-        // Convierte la textura transparente en un spritesheet de 563x768 píxeles
-        this.textures.get('player_clean').addSpriteSheetFromSheet({
-            frameWidth: 563,
-            frameHeight: 768
-        });
+        this.isCrouched = false;
 
         // Configure physics world boundaries (4000px wide, 600px tall)
         this.physics.world.setBounds(0, 0, 4000, 600);
@@ -214,23 +167,45 @@ class PlatformerScene extends Phaser.Scene {
         this.platforms.create(3450, 300, 'platform'); // Platform 11 (Y: 300)
         this.platforms.create(3750, 260, 'platform'); // Platform 12 (Y: 260)
 
-        // Create player sprite
-        this.player = this.physics.add.sprite(100, 400, 'player_clean');
+        // Create player sprite using 'player_move' spritesheet by default
+        this.player = this.physics.add.sprite(100, 400, 'player_move');
         this.player.setScale(0.08);
 
-        // Define 'walk' animation (frames 0 to 9)
+        // Define 'walk' animation (frames 5 to 9 from player_move)
         this.anims.create({
             key: 'walk',
-            frames: this.anims.generateFrameNumbers('player_clean', { start: 0, end: 9 }),
+            frames: this.anims.generateFrameNumbers('player_move', { start: 5, end: 9 }),
             frameRate: 12,
             repeat: -1
         });
 
-        // Define 'idle' animation (frame 0)
+        // Define 'idle' animation (frame 5 from player_move)
         this.anims.create({
             key: 'idle',
-            frames: [{ key: 'player_clean', frame: 0 }],
+            frames: [{ key: 'player_move', frame: 5 }],
             frameRate: 1
+        });
+
+        // Define 'jump' animation (frame 2 from player_jump)
+        this.anims.create({
+            key: 'jump',
+            frames: [{ key: 'player_jump', frame: 2 }],
+            frameRate: 1
+        });
+
+        // Define 'fall' animation (frame 4 from player_jump)
+        this.anims.create({
+            key: 'fall',
+            frames: [{ key: 'player_jump', frame: 4 }],
+            frameRate: 1
+        });
+
+        // Define 'crouch' animation (frames 5 to 9 from player_crouch)
+        this.anims.create({
+            key: 'crouch',
+            frames: this.anims.generateFrameNumbers('player_crouch', { start: 5, end: 9 }),
+            frameRate: 10,
+            repeat: 0
         });
 
         // Collide with the boundaries of the Phaser game screen
@@ -297,36 +272,57 @@ class PlatformerScene extends Phaser.Scene {
     }
 
     update(time, delta) {
-        // Restart the scene via Game Over scene if the player falls off the bottom of the map (into a pit)
-        if (this.player.y > 580) {
-            this.player.body.enable = false; // Freeze player physics
-            this.scene.start('GameOverScene');
+        // Restart the scene if the player falls off the bottom of the map (into a pit)
+        if (this.player.y > 550) {
+            this.player.body.enable = false; // Desactiva las físicas para detener el personaje
+            this.scene.start('GameOverScene'); // Lanza inmediatamente la pantalla de Game Over
             return;
         }
 
         // If level is completed, skip update logic (player is frozen)
         if (this.levelCompleted) return;
 
-        // --- 1. HORIZONTAL MOVEMENT CONTROL WITH INERTIA ---
-        if (this.cursors.left.isDown) {
-            // Apply leftward acceleration
-            this.player.setAccelerationX(-this.ACCELERATION);
-            this.player.setFlipX(true); // Flip sprite to face left
-            this.player.anims.play('walk', true);
-        } else if (this.cursors.right.isDown) {
-            // Apply rightward acceleration
-            this.player.setAccelerationX(this.ACCELERATION);
-            this.player.setFlipX(false); // Do not flip (face right)
-            this.player.anims.play('walk', true);
-        } else {
-            // Apply 0 acceleration so setDragX takes care of deceleration slide
+        // Check if crouch command is active (persists while down key is held and not falling fast)
+        const isCrouchPressed = this.cursors.down.isDown && 
+                                (this.player.body.touching.down || (this.isCrouched && this.player.body.velocity.y < 100));
+
+        if (isCrouchPressed) {
+            // Apply crouched state and adjust collision hitbox
+            if (!this.isCrouched) {
+                this.isCrouched = true;
+                // Shrink physics body width to 300, height to 384 (50% of 768), and offset it to bottom-align
+                this.player.body.setSize(300, 384);
+                this.player.body.setOffset(131, 384);
+            }
+            // Freeze horizontal motion completely
+            this.player.setVelocityX(0);
             this.player.setAccelerationX(0);
-            this.player.anims.play('idle', true);
+        } else {
+            // Restore standing state and reset standard hitbox
+            if (this.isCrouched) {
+                this.isCrouched = false;
+                this.player.body.setSize(563, 768);
+                this.player.body.setOffset(0, 0);
+            }
+
+            // --- 1. HORIZONTAL MOVEMENT CONTROL WITH INERTIA ---
+            if (this.cursors.left.isDown) {
+                // Apply leftward acceleration
+                this.player.setAccelerationX(-this.ACCELERATION);
+                this.player.setFlipX(true); // Flip sprite to face left
+            } else if (this.cursors.right.isDown) {
+                // Apply rightward acceleration
+                this.player.setAccelerationX(this.ACCELERATION);
+                this.player.setFlipX(false); // Do not flip (face right)
+            } else {
+                // Apply 0 acceleration so setDragX takes care of deceleration slide
+                this.player.setAccelerationX(0);
+            }
         }
 
         // --- 2. DYNAMIC VARIABLE JUMP HEIGHT LOGIC ---
         // Jump starts if the jump buttons (Up arrow OR Spacebar) are pressed and player is on the ground
-        const jumpPressed = this.cursors.up.isDown || this.spaceKey.isDown;
+        const jumpPressed = (this.cursors.up.isDown || this.spaceKey.isDown) && !isCrouchPressed;
 
         if (jumpPressed) {
             if (this.player.body.touching.down) {
@@ -354,6 +350,28 @@ class PlatformerScene extends Phaser.Scene {
         // Safety fallback: if player is starting to fall (Y velocity positive) or hits a ceiling, end jump boost
         if (this.player.body.velocity.y >= 0 || this.player.body.touching.up) {
             this.isJumping = false;
+        }
+
+        // --- 3. ANIMATION LOGIC BASED ON PHYSICAL STATE ---
+        if (isCrouchPressed) {
+            // Reprodúcela solo si no se está reproduciendo ya, evitando el reinicio constante del loop
+            if (this.player.anims.currentAnim?.key !== 'crouch') {
+                this.player.play('crouch');
+            }
+        } else if (!this.player.body.touching.down) {
+            // Player is in the air (jumping or falling)
+            if (this.player.body.velocity.y < 0) {
+                this.player.anims.play('jump', true);
+            } else if (this.player.body.velocity.y > 0) {
+                this.player.anims.play('fall', true);
+            }
+        } else {
+            // Player is on the ground
+            if (this.cursors.left.isDown || this.cursors.right.isDown) {
+                this.player.anims.play('walk', true);
+            } else {
+                this.player.anims.play('idle', true);
+            }
         }
     }
 
