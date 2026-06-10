@@ -10,7 +10,3 @@ desktop.ini
 # Archivos temporales o de pruebas locales
 *.log
 *.tmp
-
-# Dependencias de Node.js
-node_modules/
-.vite/

@@ -200,12 +200,11 @@ class PlatformerScene extends Phaser.Scene {
             frameRate: 1
         });
 
-        // Define 'crouch' animation (frames 5 to 9 from player_crouch)
+        // Define 'crouch' animation (fixed static frame 9 of player_crouch)
         this.anims.create({
             key: 'crouch',
-            frames: this.anims.generateFrameNumbers('player_crouch', { start: 5, end: 9 }),
-            frameRate: 10,
-            repeat: 0
+            frames: [{ key: 'player_crouch', frame: 9 }],
+            frameRate: 1
         });
 
         // Collide with the boundaries of the Phaser game screen
@@ -259,8 +258,8 @@ class PlatformerScene extends Phaser.Scene {
         this.ACCELERATION = 900;       // Horizontal acceleration speed
         this.DRAG = 750;               // Sliding drag (inertia) when keys are released
         this.MAX_SPEED_X = 320;        // Max horizontal running speed
-        this.JUMP_SPEED = -360;        // Initial jump impulse (Balanced - reduced from -450)
-        this.MAX_JUMP_HOLD_TIME = 220; // Maximum duration in ms (Balanced - reduced from 280ms)
+        this.JUMP_SPEED = -360;        // Initial jump impulse (Balanced)
+        this.MAX_JUMP_HOLD_TIME = 220; // Maximum duration in ms (Balanced)
 
         // State tracking
         this.isJumping = false;        // Indicates if we are currently holding the jump key for boost
@@ -273,7 +272,7 @@ class PlatformerScene extends Phaser.Scene {
 
     update(time, delta) {
         // Restart the scene if the player falls off the bottom of the map (into a pit)
-        if (this.player.y > 550) {
+        if (this.player.y > 560) {
             this.player.body.enable = false; // Desactiva las físicas para detener el personaje
             this.scene.start('GameOverScene'); // Lanza inmediatamente la pantalla de Game Over
             return;
